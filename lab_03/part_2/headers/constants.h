@@ -4,10 +4,11 @@
 
 #define MSG_LEN 512
 #define SRV_IP "127.0.0.1"
-#define SOCK_PORT 5012
+#define SOCK_PORT 5018
 #define THREADS 16
 #define BUFFER_SIZE 1024 * 10
 #define FOLDER_MAX 1024
+#define STATISTICS_FILE_NAME "statistics.txt"
 
 // codes
 #define OK 200

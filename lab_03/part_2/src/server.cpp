@@ -11,11 +11,13 @@
 #include <iostream>
 #include <vector>
 #include <signal.h>
+#include <time.h>
 
 #include "../headers/threads.h"
 #include "../headers/response.h"
 #include "../headers/request.h"
 #include "../headers/constants.h"
+#include "../headers/statistic.h"
 
 // Считывает информацию из input в readed_data 
 void read_file(std::vector<char> &readed_data, FILE* input) 
@@ -67,9 +69,18 @@ std::string get_content_type(std::string path)
     return cont_type;
 }
 
+// Возвращает расширение.
+std::string get_extension(std::string path)
+{
+    int dotpos = path.rfind('.');
+    std::string extension = path;
+    extension.erase(0, dotpos+1);
+    return extension;
+}
+
 // Возвращает результат запроса Request req.
 // root - папка из которой необходимо получить файлы.
-std::string create_res(Request &req, const std::string root) 
+std::string create_res(Request &req, const std::string root, Statistics &statistics, std::string addr) 
 {
     std::vector<char> data;
     
@@ -137,6 +148,15 @@ std::string create_res(Request &req, const std::string root)
     read_file(data, f);
     fclose(f);
 
+    // Обработка и сохранение статистики.
+    time_t rawtime;
+    struct tm* timeinfo;
+    auto extension = get_extension(path);
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    statistics.set_statistics(extension, addr + " data: " + asctime(timeinfo));
+
     auto cont_type = get_content_type(path);
 
     // Если метод HEAD, то не возвращаем тело.
@@ -148,7 +168,7 @@ std::string create_res(Request &req, const std::string root)
     return res.get_string(cont_type, data.size(), data);
 }
 
-void handler(int sock, std::string addr, std::string root) 
+void handler(int sock, std::string addr, std::string root, Statistics &statistics) 
 {
     int request;
     char buf[BUFFER_SIZE], *request_lines[3];
@@ -179,11 +199,8 @@ void handler(int sock, std::string addr, std::string root)
     white();
 
     Request req(buf);
-
-    // TODO:
-    // statistic
     
-    std::string result = create_res(req, root);
+    std::string result = create_res(req, root, statistics, addr);
     std::cout << result;  
     send(sock, result.c_str(), result.size(), 0);
 
@@ -253,7 +270,7 @@ int main(void)
     white();
 
     ThreadPool pool(THREADS);
-    // TODO: statistic create here.
+    Statistics statistics(STATISTICS_FILE_NAME);
 
     auto folder = get_folder();
 
@@ -265,8 +282,9 @@ int main(void)
             std::string ip =  inet_ntoa(client_addr.sin_addr);
             // auto port = std::to_string(ntohs(client_addr.sin_port));
             // Ставим обработку запроса в очередь пула потоков.
-            pool.enqueue(handler, new_socket, ip, folder);
+            pool.enqueue(handler, new_socket, ip, folder, statistics);
     }
 
+    close(sock);
     return SUCCESS;
 }
