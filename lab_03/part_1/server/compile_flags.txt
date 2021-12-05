@@ -1,0 +1,5 @@
+-I./include
+-I../common/include
+-std=c++17
+-libc++
+-xc++

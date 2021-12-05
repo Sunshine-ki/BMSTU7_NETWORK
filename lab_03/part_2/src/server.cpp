@@ -195,7 +195,7 @@ void handler(int sock, std::string addr, std::string root, Statistics &statistic
     }
 
     green();
-    std::cout << buf;
+    // std::cout << buf;
     white();
 
     Request req(buf);
